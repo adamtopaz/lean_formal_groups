@@ -12,6 +12,75 @@ variables (σ τ ω R : Type*) [comm_ring R]
 
 namespace mv_power_series
 
+#check mv_polynomial.eval₂
+
+variables {σ τ}
+
+@[simp]
+lemma incl_monomial_aux (ι : σ ↪ τ) (m : σ →₀ ℕ) (t : σ) : 
+  m.map_domain ι (ι t) = m t := 
+begin
+  sorry -- see commented proof below
+end
+
+def incl_monomial (ι : σ ↪ τ) : (σ →₀ ℕ) ↪ (τ →₀ ℕ) := 
+{ to_fun := λ m, finsupp.map_domain ι m,
+  inj' := begin
+    intros m1 m2 h,
+    dsimp at h,
+    ext t,
+    apply_fun (λ e, e (ι t)) at h,
+    simpa only [incl_monomial_aux] using h,
+    /-
+    have h1 : m1 t = m1.map_domain ι (ι t), by simp only [incl_monomial_aux],
+    /-
+    { dsimp [finsupp.map_domain],
+      simp,
+      -- TODO: Take a look at the docs for `finsupp.sum`.
+      have : m1 t = m1.sum (λ a n, if a = t then n else 0),
+      { simp },
+      convert this using 2,
+      ext a b,
+      rw finsupp.single_apply,
+      rw (ι.injective.eq_iff : ι a = ι t ↔ a = t) },
+    -/
+    have h2 : m2 t = m2.map_domain ι (ι t), sorry, -- similar to above. (extract a helper lemma).
+    simp [h1, h2, h]
+    -/
+  end }
+
+def incl_fun (ι : σ ↪ τ) : mv_power_series σ R → mv_power_series τ R := 
+λ f m, if h : ∃ m' : σ →₀ ℕ, incl_monomial ι m' = m then f h.some else 0
+
+@[simp]
+lemma constant_coeff_incl (ι : σ ↪ τ) (f : mv_power_series σ R) : 
+  constant_coeff τ R (incl_fun R ι f) = constant_coeff σ R f := 
+sorry
+
+lemma incl_one (ι : σ ↪ τ) : 
+  incl_fun R ι 1 = 1 :=
+begin
+  ext m,
+  simp only [mv_power_series.coeff_one],
+  split_ifs,
+  { simp [h] },
+  { dsimp [incl_fun, coeff], split_ifs with hh hh,
+    { let m' := hh.some,
+      have h' : m' ≠ 0, sorry,
+      change (coeff R m') 1 = 0,
+      rw mv_power_series.coeff_one,
+      rw if_neg h' },
+    { refl } }
+end
+
+def incl (ι : σ ↪ τ) : mv_power_series σ R →+* mv_power_series τ R := 
+{ to_fun := incl_fun _ ι,
+  map_one' := incl_one _ _,
+  map_mul' := sorry,
+  map_zero' := sorry,
+  map_add' := sorry }
+
+variable (σ)
 def variable_ideal : ideal (mv_power_series σ R) :=
 ideal.span (set.range mv_power_series.X)
 
