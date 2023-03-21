@@ -52,10 +52,27 @@ def incl_monomial (ι : σ ↪ τ) : (σ →₀ ℕ) ↪ (τ →₀ ℕ) :=
 def incl_fun (ι : σ ↪ τ) : mv_power_series σ R → mv_power_series τ R := 
 λ f m, if h : ∃ m' : σ →₀ ℕ, incl_monomial ι m' = m then f h.some else 0
 
+lemma incl_fun_spec (ι : σ ↪ τ) (m : σ →₀ ℕ) (n : τ →₀ ℕ) (hm : incl_monomial ι m = n) (f) :
+  coeff R n (incl_fun R ι f) = coeff R m f :=
+begin
+  dsimp [incl_fun, coeff],
+  split_ifs,
+  { congr' 1,
+    apply (incl_monomial ι).injective,
+    rw [h.some_spec, hm] },
+  { push_neg at h, 
+    exfalso,
+    apply h,
+    exact hm }
+end
+
 @[simp]
 lemma constant_coeff_incl (ι : σ ↪ τ) (f : mv_power_series σ R) : 
   constant_coeff τ R (incl_fun R ι f) = constant_coeff σ R f := 
-sorry
+begin
+  apply incl_fun_spec,
+  refl,
+end
 
 lemma incl_one (ι : σ ↪ τ) : 
   incl_fun R ι 1 = 1 :=
