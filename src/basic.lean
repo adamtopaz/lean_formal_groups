@@ -16,7 +16,7 @@ namespace mv_power_series
 
 variables {σ τ}
 
-set_option trace.simplify.rewrite true
+--set_option trace.simplify.rewrite true
 
 @[simp]
 lemma incl_monomial_aux (ι : σ ↪ τ) (m : σ →₀ ℕ) (t : σ) : 
@@ -24,11 +24,12 @@ lemma incl_monomial_aux (ι : σ ↪ τ) (m : σ →₀ ℕ) (t : σ) :
 begin
   dsimp [finsupp.map_domain],
   rw finsupp.sum_apply,
-  have : m t = m.sum (λ a n, ite (a = t) n 0),
-  { simp },
-  convert this using 2,
+  have : m.sum (λ a n, ite (a = t) n 0) = m t,
+  { simp only [finsupp.sum_ite_self_eq'] },
+  convert this,
   ext a b, --ISSUE HERE
-  
+  rw finsupp.single_apply,
+  rw (ι.injective.eq_iff : ι a = ι t ↔ a = t) 
 end
 
 def incl_monomial (ι : σ ↪ τ) : (σ →₀ ℕ) ↪ (τ →₀ ℕ) := 
@@ -39,22 +40,6 @@ def incl_monomial (ι : σ ↪ τ) : (σ →₀ ℕ) ↪ (τ →₀ ℕ) :=
     ext t,
     apply_fun (λ e, e (ι t)) at h,
     simpa only [incl_monomial_aux] using h,
-    /-
-    have h1 : m1 t = m1.map_domain ι (ι t), by simp only [incl_monomial_aux],
-    /-
-    { dsimp [finsupp.map_domain],
-      simp,
-      -- TODO: Take a look at the docs for `finsupp.sum`.
-      have : m1 t = m1.sum (λ a n, if a = t then n else 0),
-      { simp },
-      convert this using 2,
-      ext a b,
-      rw finsupp.single_apply,
-      rw (ι.injective.eq_iff : ι a = ι t ↔ a = t) },
-    -/
-    have h2 : m2 t = m2.map_domain ι (ι t), sorry, -- similar to above. (extract a helper lemma).
-    simp [h1, h2, h]
-    -/
   end }
 
 
@@ -86,6 +71,9 @@ begin
   refl,
 end
 
+#check @Exists.some
+#check @Exists.some_spec
+
 lemma incl_one (ι : σ ↪ τ) : 
   incl_fun R ι 1 = 1 :=
 begin
@@ -94,12 +82,13 @@ begin
   split_ifs,
   { simp [h] },
   { dsimp [incl_fun, coeff], split_ifs with hh hh,
-    { let m' := hh.some, --Could not fully figure out how this works and how to use it
+    { let m' := hh.some, 
+      have hm' : incl_monomial ι m' = m := hh.some_spec,
       have h' : m' ≠ 0, {
-        by_contra hm,
-        apply h,
+        contrapose! h,
+        rw ← hm',
         sorry,
-      }
+      },
       change (coeff R m') 1 = 0,
       rw mv_power_series.coeff_one,
       rw if_neg h' },
@@ -125,13 +114,18 @@ lemma incl_add (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series 
     simp,
   end
 
-lemma incl_mult (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
+lemma incl_mul (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
   incl_fun R ι (F * G) = incl_fun R ι F * incl_fun R ι G :=
   begin
     ext n,
-    --dsimp[coeff_mul]
-    dsimp [incl_fun, coeff],
+    rw [coeff_mul],
+    dsimp [coeff, incl_fun],
     split_ifs,
+    { sorry },
+    { sorry }
+
+    --dsimp[coeff_mul]
+    --split_ifs,
     --This is very messy, anything I could do to simplify things
     /-
     by_cases (∃ m : σ →₀ ℕ, incl_monomial ι m = n),
@@ -143,7 +137,7 @@ lemma incl_mult (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series
 def incl (ι : σ ↪ τ) : mv_power_series σ R →+* mv_power_series τ R := 
 { to_fun := incl_fun _ ι,
   map_one' := incl_one _ _,
-  map_mul' := sorry,
+  map_mul' := incl_mul _ _,
   map_zero' := incl_zero _ _,
   map_add' := incl_add _ _, }
 
@@ -165,6 +159,7 @@ open finset
 variables {σ τ ω R}
 def nth_pow (n : ℕ) (F : mv_power_series σ R) : mv_power_series σ R := (∏ i in range n, F)
 
+/-
 
 def incl_fun : mv_power_series σ R → mv_power_series (σ ⊕ τ) R := 
   show ((σ →₀ ℕ) → R) → ((σ ⊕ τ →₀ ℕ) → R), from λ f m, 
@@ -239,9 +234,11 @@ def compose_snd
   mv_power_series (σ ⊕ ω) R := -- F(X_1,...,X_n;G_1(Z_1,...,Z_k),...,G_m(Z_1,...,Z_k))
 sorry 
 
+-/
 
 end mv_power_series
 
+/-
 structure mv_formal_group_law :=
 (F : σ → mv_power_series (σ ⊕ σ) R)
 (F_mod_2 : ∀ i, mv_power_series.congruent_mod 2 (F i) 
@@ -251,4 +248,4 @@ structure mv_formal_group_law :=
   = 
   mv_power_series.change_var (equiv.sum_assoc _ _ _)
   (mv_power_series.compose_fst (F i) F sorry))
-  
+-/
