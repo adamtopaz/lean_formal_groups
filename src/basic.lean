@@ -12,15 +12,23 @@ variables (σ τ ω R : Type*) [comm_ring R]
 
 namespace mv_power_series
 
-#check mv_polynomial.eval₂
+#check finsupp.map_domain
 
 variables {σ τ}
+
+set_option trace.simplify.rewrite true
 
 @[simp]
 lemma incl_monomial_aux (ι : σ ↪ τ) (m : σ →₀ ℕ) (t : σ) : 
   m.map_domain ι (ι t) = m t := 
 begin
-  sorry -- see commented proof below
+  dsimp [finsupp.map_domain],
+  rw finsupp.sum_apply,
+  have : m t = m.sum (λ a n, ite (a = t) n 0),
+  { simp },
+  convert this using 2,
+  ext a b, --ISSUE HERE
+  
 end
 
 def incl_monomial (ι : σ ↪ τ) : (σ →₀ ℕ) ↪ (τ →₀ ℕ) := 
@@ -49,6 +57,10 @@ def incl_monomial (ι : σ ↪ τ) : (σ →₀ ℕ) ↪ (τ →₀ ℕ) :=
     -/
   end }
 
+
+--R is being recognized as a variable here?
+--Or variables {σ τ} changes them to be implicit instead of explicit variables, but R is not changed?
+--That would not explain ω
 def incl_fun (ι : σ ↪ τ) : mv_power_series σ R → mv_power_series τ R := 
 λ f m, if h : ∃ m' : σ →₀ ℕ, incl_monomial ι m' = m then f h.some else 0
 
@@ -82,20 +94,58 @@ begin
   split_ifs,
   { simp [h] },
   { dsimp [incl_fun, coeff], split_ifs with hh hh,
-    { let m' := hh.some,
-      have h' : m' ≠ 0, sorry,
+    { let m' := hh.some, --Could not fully figure out how this works and how to use it
+      have h' : m' ≠ 0, {
+        by_contra hm,
+        apply h,
+        sorry,
+      }
       change (coeff R m') 1 = 0,
       rw mv_power_series.coeff_one,
       rw if_neg h' },
     { refl } }
 end
 
+lemma incl_zero (ι : σ ↪ τ) :
+  incl_fun R ι 0 = 0 :=
+  begin
+    ext m,
+    simp only [mv_power_series.coeff_zero],
+    dsimp [incl_fun, coeff],
+    split_ifs;
+    try {refl,},
+  end
+
+lemma incl_add (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
+  incl_fun R ι (F + G) = incl_fun R ι F + incl_fun R ι G :=
+  begin
+    ext m,
+    dsimp [incl_fun, coeff],
+    split_ifs;
+    simp,
+  end
+
+lemma incl_mult (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
+  incl_fun R ι (F * G) = incl_fun R ι F * incl_fun R ι G :=
+  begin
+    ext n,
+    --dsimp[coeff_mul]
+    dsimp [incl_fun, coeff],
+    split_ifs,
+    --This is very messy, anything I could do to simplify things
+    /-
+    by_cases (∃ m : σ →₀ ℕ, incl_monomial ι m = n),
+    let m := h.some,
+    rw incl_fun_spec R ι m n,
+    -/
+  end
+
 def incl (ι : σ ↪ τ) : mv_power_series σ R →+* mv_power_series τ R := 
 { to_fun := incl_fun _ ι,
   map_one' := incl_one _ _,
   map_mul' := sorry,
-  map_zero' := sorry,
-  map_add' := sorry }
+  map_zero' := incl_zero _ _,
+  map_add' := incl_add _ _, }
 
 variable (σ)
 def variable_ideal : ideal (mv_power_series σ R) :=
