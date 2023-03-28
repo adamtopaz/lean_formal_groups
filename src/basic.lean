@@ -27,7 +27,7 @@ begin
   have : m.sum (λ a n, ite (a = t) n 0) = m t,
   { simp only [finsupp.sum_ite_self_eq'] },
   convert this,
-  ext a b, --ISSUE HERE
+  ext a b,
   rw finsupp.single_apply,
   rw (ι.injective.eq_iff : ι a = ι t ↔ a = t) 
 end
@@ -42,6 +42,12 @@ def incl_monomial (ι : σ ↪ τ) : (σ →₀ ℕ) ↪ (τ →₀ ℕ) :=
     simpa only [incl_monomial_aux] using h,
   end }
 
+lemma incl_mon_add (ι : σ ↪ τ) (m : σ →₀ ℕ) (n : σ →₀ ℕ) : 
+  incl_monomial ι (m + n) = incl_monomial ι m + incl_monomial ι n :=
+  begin
+    dsimp [incl_monomial],
+    exact finsupp.map_domain_add,
+  end
 
 --R is being recognized as a variable here?
 --Or variables {σ τ} changes them to be implicit instead of explicit variables, but R is not changed?
@@ -87,7 +93,8 @@ begin
       have h' : m' ≠ 0, {
         contrapose! h,
         rw ← hm',
-        sorry,
+        rw h,
+        refl,
       },
       change (coeff R m') 1 = 0,
       rw mv_power_series.coeff_one,
@@ -114,24 +121,78 @@ lemma incl_add (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series 
     simp,
   end
 
+/-
+lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n)
+  (p : (τ →₀ ℕ) × (τ →₀ ℕ)) (hh : p ∈ n.antidiagonal) :
+  (¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst) ∨ (¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd) :=
+  begin
+    -- messy proof should try and clean up
+    rw finsupp.mem_antidiagonal at hh,
+    by_contra,
+    rw ← and_iff_not_or_not at h,
+    cases h with hl hr,
+    let ml := hl.some,
+    have hml := hl.some_spec,
+    let mr := hr.some,
+    have hmr := hr.some_spec,
+    -- rw ← [hml, hmr] at hh, this does not work, how to fix?
+    rw ← hml at hh,
+    rw ← hmr at hh,
+    rw ← incl_mon_add at hh,
+    apply h,
+    use (ml + mr),
+    apply hh,
+  end
+-/
+
+lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n)
+ (F : mv_power_series σ R) (G : mv_power_series σ R) (p : (τ →₀ ℕ) × (τ →₀ ℕ)) (hh : p ∈ n.antidiagonal) :
+  dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst)
+ (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), F h.some) 
+ (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), 0) * 
+ dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd) 
+ (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), G h.some) 
+ (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), 0) = 0  :=
+ begin
+ split_ifs, {
+  exfalso,
+  apply h,
+  use h_1.some + h_2.some,
+  rw incl_mon_add,
+  rw [h_1.some_spec, h_2.some_spec],
+  rw finsupp.mem_antidiagonal at hh,
+  exact hh,
+ }, {
+  ring,
+ }, {
+  ring,
+ }, {
+  ring,
+ }
+ end
+
+lemma helper2 (ι : σ ↪ τ) (n : τ →₀ ℕ) (F : mv_power_series σ R) (G : mv_power_series σ R)
+  (p : (τ →₀ ℕ) × (τ →₀ ℕ)) (hh : p ∈ n.antidiagonal) :
+  dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst) 
+  (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), F h.some) 
+  (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), 0) * 
+  dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd) 
+  (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), G h.some) 
+  (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), 0) = ()
+
 lemma incl_mul (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
-  incl_fun R ι (F * G) = incl_fun R ι F * incl_fun R ι G :=
+  incl_fun R ι (F * G) = incl_fun R ι F * incl_fun R ι G := 
   begin
     ext n,
     rw [coeff_mul],
     dsimp [coeff, incl_fun],
-    split_ifs,
-    { sorry },
-    { sorry }
+    split_ifs, {  
+      dsimp [mv_power_series.has_mul],
+      sorry,
+    }, {
+      rw helper R ι n h F G,
+    }
 
-    --dsimp[coeff_mul]
-    --split_ifs,
-    --This is very messy, anything I could do to simplify things
-    /-
-    by_cases (∃ m : σ →₀ ℕ, incl_monomial ι m = n),
-    let m := h.some,
-    rw incl_fun_spec R ι m n,
-    -/
   end
 
 def incl (ι : σ ↪ τ) : mv_power_series σ R →+* mv_power_series τ R := 
