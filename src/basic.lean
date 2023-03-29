@@ -145,40 +145,65 @@ lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ¬∃ (m' : σ →₀ ℕ
   end
 -/
 
-lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n)
- (F : mv_power_series σ R) (G : mv_power_series σ R) (p : (τ →₀ ℕ) × (τ →₀ ℕ)) (hh : p ∈ n.antidiagonal) :
+lemma incl_mul_h (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n) --need better name
+  (F : mv_power_series σ R) (G : mv_power_series σ R) (p : (τ →₀ ℕ) × (τ →₀ ℕ)) (hh : p ∈ n.antidiagonal) :
   dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst)
- (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), F h.some) 
- (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), 0) * 
- dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd) 
- (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), G h.some) 
- (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), 0) = 0  :=
- begin
- split_ifs, {
-  exfalso,
-  apply h,
-  use h_1.some + h_2.some,
-  rw incl_mon_add,
-  rw [h_1.some_spec, h_2.some_spec],
-  rw finsupp.mem_antidiagonal at hh,
-  exact hh,
- }, {
-  ring,
- }, {
-  ring,
- }, {
-  ring,
- }
- end
+  (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), F h.some) 
+  (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), 0) * 
+  dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd) 
+  (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), G h.some) 
+  (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), 0) = 0  :=
+  begin
+    split_ifs, {
+      exfalso,
+      apply h,
+      use h_1.some + h_2.some,
+      rw incl_mon_add,
+      rw [h_1.some_spec, h_2.some_spec],
+      rw finsupp.mem_antidiagonal at hh,
+      exact hh,
+    }, {
+      ring,
+    }, {
+      ring,
+    }, {
+      ring,
+    }
+  end
 
-lemma helper2 (ι : σ ↪ τ) (n : τ →₀ ℕ) (F : mv_power_series σ R) (G : mv_power_series σ R)
-  (p : (τ →₀ ℕ) × (τ →₀ ℕ)) (hh : p ∈ n.antidiagonal) :
+def S (ι : σ ↪ τ) (n : τ →₀ ℕ) : finset ((τ →₀ ℕ) × (τ →₀ ℕ)) := 
+  set.to_finset {p : (τ →₀ ℕ) × (τ →₀ ℕ) | p ∈ n.antidiagonal ∧
+  (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst) ∧ (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd)}
+
+lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n)
+  (F : mv_power_series σ R) (G : mv_power_series σ R) : 
+  (∀ p : (τ →₀ ℕ) × (τ →₀ ℕ), p ∈ (n.antidiagonal \ S ι n) → 
   dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst) 
   (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), F h.some) 
   (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), 0) * 
   dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd) 
   (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), G h.some) 
-  (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), 0) = ()
+  (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), 0) = 0) :=
+  begin
+    intros p hh,
+    split_ifs, {
+      sorry,
+    }, {
+      ring,
+    }, {
+      ring,
+    }, {
+      ring,
+    }
+
+  end
+  /-dite (∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.fst) 
+  (λ (h : ∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.fst), F h.some) 
+  (λ (h : ¬∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.fst), 0) * 
+  dite (∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.snd) 
+  (λ (h : ∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.snd), G h.some) 
+  (λ (h : ¬∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.snd), 0))-/
+
 
 lemma incl_mul (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
   incl_fun R ι (F * G) = incl_fun R ι F * incl_fun R ι G := 
@@ -188,9 +213,17 @@ lemma incl_mul (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series 
     dsimp [coeff, incl_fun],
     split_ifs, {  
       dsimp [mv_power_series.has_mul],
-      sorry,
+      have hh : (S ι n ⊆ n.antidiagonal), {
+        rw finset.subset_iff,
+        intros x hh,
+        sorry,
+      },
+      rw ← finset.sum_subset_zero_on_sdiff hh (helper R ι n h F G),
     }, {
-      rw helper R ι n h F G,
+      symmetry,
+      apply finset.sum_eq_zero,
+      intros p hh,
+      exact incl_mul_h R ι n h F G p hh,
     }
 
   end
