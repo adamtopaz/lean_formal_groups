@@ -109,7 +109,7 @@ lemma incl_zero (ι : σ ↪ τ) :
     simp only [mv_power_series.coeff_zero],
     dsimp [incl_fun, coeff],
     split_ifs;
-    try {refl,},
+    refl,
   end
 
 lemma incl_add (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
@@ -245,12 +245,15 @@ def sum_terms (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series �
 
 def bij_map (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n) : 
   Π (a : (σ →₀ ℕ) × (σ →₀ ℕ)), a ∈ h.some.antidiagonal → (τ →₀ ℕ) × (τ →₀ ℕ) := 
+λ a ha, ⟨incl_monomial ι a.1, incl_monomial ι a.2⟩
+/-
   begin
   intros a ha,
   split,
   exact incl_monomial ι a.1,
   exact incl_monomial ι a.2,
   end
+-/
 -- should probably change this (idk if this is considered bad code)
 
 lemma bij_map_into (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n ) : 
@@ -385,6 +388,7 @@ def incl (ι : σ ↪ τ) : mv_power_series σ R →+* mv_power_series τ R :=
   map_add' := incl_add _ _, }
 
 variable (σ)
+
 def variable_ideal : ideal (mv_power_series σ R) :=
 ideal.span (set.range mv_power_series.X)
 
@@ -396,11 +400,10 @@ variables {σ τ ω R}
 def congruent_mod (n : ℕ) (F G : mv_power_series σ R) : Prop :=
 F - G ∈ degree_geq σ R n
 
-
 open finset
 
 variables {σ τ ω R}
-def nth_pow (n : ℕ) (F : mv_power_series σ R) : mv_power_series σ R := (∏ i in range n, F)
+def nth_pow (n : ℕ) (F : mv_power_series σ R) : mv_power_series σ R := F^n -- (∏ i in range n, F)
 
 --as this all stands it is almost complete, however I need to "add one to functions n"
 /-
@@ -414,15 +417,65 @@ def comp_eval (G : σ → mv_power_series τ R) (n : τ →₀ ℕ) : σ → mv_
 def F_poly (F : mv_power_series σ R) (hF : finite σ ) (n : τ →₀ ℕ ) : mv_polynomial σ R :=
   mv_power_series.trunc_fun (finsupp.equiv_fun_on_finite.inv_fun (λ s : σ, ∑ t in n.support, n t)) F
 
+def const_coeff_zero (F : mv_power_series σ R) : Prop := coeff R 0 F = 0 
 
+def compose_polynomial 
+  (F : mv_polynomial σ R)
+  (G : σ → mv_polynomial τ R) :
+  mv_polynomial τ R := 
+mv_polynomial.eval₂ mv_polynomial.C G F
+
+def finsupp.const (σ) [fintype σ] (m : ℕ) : σ →₀ ℕ := 
+(finsupp.equiv_fun_on_finite.symm $ function.const _ m)
+
+def truncate_at_nat [fintype σ] (F : mv_power_series σ R) (m : ℕ) : mv_polynomial σ R := 
+trunc _ (finsupp.const σ m) F
+
+lemma exists_sufficiently_large_truncation 
+  [fintype σ]
+  [fintype τ]
+  (F : mv_power_series σ R)
+  (G : σ → mv_power_series τ R)
+  (hG : ∀ i, (G i).const_coeff_zero) :
+  ∀ monomial : τ →₀ ℕ, ∃ N : ℕ, ∀ m (hm: N ≤ m), 
+    (compose_polynomial (F.truncate_at_nat m) (λ i, (G i).truncate_at_nat m)).coeff monomial = 
+    (compose_polynomial (F.truncate_at_nat m) (λ i, (G i).truncate_at_nat N)).coeff monomial := 
+sorry
+
+def sufficiently_large_bound 
+  [fintype σ]
+  [fintype τ]
+  (F : mv_power_series σ R)
+  (G : σ → mv_power_series τ R)
+  (hG : ∀ i, (G i).const_coeff_zero)
+  (monomial : τ →₀ ℕ) : ℕ := 
+(exists_sufficiently_large_truncation F G hG monomial).some
+
+def sufficiently_large_bound_spec
+  [fintype σ]
+  [fintype τ]
+  (F : mv_power_series σ R)
+  (G : σ → mv_power_series τ R)
+  (hG : ∀ i, (G i).const_coeff_zero)
+  (monomial : τ →₀ ℕ) :
+  ∀ m (hm: sufficiently_large_bound F G hG monomial ≤ m), 
+    (compose_polynomial (F.truncate_at_nat m) (λ i, (G i).truncate_at_nat m)).coeff monomial = 
+    (compose_polynomial (F.truncate_at_nat m) (λ i, (G i).truncate_at_nat $ 
+      sufficiently_large_bound F G hG monomial)).coeff monomial := 
+(exists_sufficiently_large_truncation F G hG monomial).some_spec
 
 def compose 
-  (F : mv_power_series σ R) -- F(X_1,X_2,...,X_n) 
-  (G : σ → mv_power_series τ R) -- G_1(X_1,...,X_m), ..., G_n(X_1,...,X_m)
-  (hF : finite σ )
-  (hG : ∀ i, congruent_mod 1 (G i) 0) :
+  [fintype σ] -- 1,...,m
+  [fintype τ] -- 1,...,n
+  (F : mv_power_series σ R) -- F(X_1,X_2,...,X_m) 
+  (G : σ → mv_power_series τ R) -- G_1(Y_1,...,Y_n), ..., G_m(Y_1,...,Y_n)
+  (hG : ∀ i, (G i).const_coeff_zero) :
   mv_power_series τ R := 
-  λ (n : τ →₀ ℕ ), mv_polynomial.coeff n (mv_polynomial.eval₂ mv_polynomial.C (comp_eval G n) (F_poly F hF n))
+  λ (n : τ →₀ ℕ), 
+  (compose_polynomial (F.truncate_at_nat (sufficiently_large_bound F G hG n)) 
+    (λ i, (G i).truncate_at_nat (sufficiently_large_bound F G hG n))).coeff n
+  
+  --mv_polynomial.coeff n (mv_polynomial.eval₂ mv_polynomial.C (comp_eval G n) (F_poly F hF n))
   --(n : (τ →₀ ℕ) => ) -- F(G_1(X_1,...,X_m),...,G_n(X_1,...,X_m))
   --give auxillary m = 2* n (bit of a hack)
 
@@ -493,11 +546,44 @@ sorry
 -/
 
 
+def assoc_left [fintype σ]
+  (F : σ → mv_power_series (σ ⊕ σ) R)
+  (F_zero : ∀ i, (F i).const_coeff_zero) (i : σ) :
+  mv_power_series ((σ ⊕ σ) ⊕ σ) R := 
+(F i).compose (sum.elim (λ j, incl R function.embedding.inl (F j)) (λ j, X $ sum.inr j)) 
+begin
+  rintros (j|j) ; dsimp [const_coeff_zero],
+  { erw constant_coeff_incl, apply F_zero },
+  { simp },
+end
+
+def assoc_right [fintype σ]
+  (F : σ → mv_power_series (σ ⊕ σ) R)
+  (F_zero : ∀ i, (F i).const_coeff_zero) (i : σ) :
+  mv_power_series (σ ⊕ (σ ⊕ σ)) R := 
+(F i).compose (sum.elim  (λ j, X $ sum.inl j) (λ j, incl R function.embedding.inr (F j))) 
+begin
+  rintros (j|j) ; dsimp [const_coeff_zero],
+  { simp },
+  { erw constant_coeff_incl, apply F_zero },
+end
 
 
 end mv_power_series
 
 #check function.embedding.inr
+
+-- F_i(X_1,...,X_n,Y_1,...,Y_n) = X_i + Y_i
+
+
+structure formal_group_law [fintype σ] := 
+(F : σ → mv_power_series (σ ⊕ σ) R)
+(F_zero : ∀ i, (F i).const_coeff_zero)
+(F_trunc : ∀ i, mv_power_series.trunc _ (mv_power_series.finsupp.const (σ ⊕ σ) 2) (F i) = 
+  mv_polynomial.X (sum.inl i) + mv_polynomial.X (sum.inr i))
+(F_assoc : ∀ i, 
+  mv_power_series.incl _ (equiv.sum_assoc σ σ σ).to_embedding   
+    (mv_power_series.assoc_left F F_zero i) = mv_power_series.assoc_right F F_zero i)
 
 /-
 
