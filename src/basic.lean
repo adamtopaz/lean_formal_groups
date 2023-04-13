@@ -175,6 +175,7 @@ def S (ι : σ ↪ τ) (n : τ →₀ ℕ) : finset ((τ →₀ ℕ) × (τ →�
   set.to_finset {p : (τ →₀ ℕ) × (τ →₀ ℕ) | p ∈ n.antidiagonal ∧
   (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst) ∧ (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd)}
 
+
 lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n)
   (F : mv_power_series σ R) (G : mv_power_series σ R) : 
   (∀ p : (τ →₀ ℕ) × (τ →₀ ℕ), p ∈ (n.antidiagonal \ S ι n) → 
@@ -187,6 +188,31 @@ lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ),
   begin
     intros p hh,
     split_ifs, {
+      exfalso,
+      unfold S at hh,
+      simp at hh,           --bad simp call
+      cases hh with hhl hhr,
+      have hh := hhr hhl,
+      specialize hh h_1.some,
+      have hh := hh h_1.some_spec,
+      specialize hh h_2.some,
+      exact hh h_2.some_spec,
+    }, {
+      ring,
+    }, {
+      ring,
+    }, {
+      ring,
+    }
+  end 
+/-
+lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n)
+  (F : mv_power_series σ R) (G : mv_power_series σ R) : 
+  ∀ p : (τ →₀ ℕ) × (τ →₀ ℕ), p ∈ (n.antidiagonal \ S ι n) → func R ι F G p = 0 :=
+  begin
+  intros p hh,
+  unfold func,
+  split_ifs, {
       sorry,
     }, {
       ring,
@@ -195,14 +221,127 @@ lemma helper (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ),
     }, {
       ring,
     }
-
   end
+-/
+
   /-dite (∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.fst) 
   (λ (h : ∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.fst), F h.some) 
   (λ (h : ¬∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.fst), 0) * 
   dite (∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.snd) 
   (λ (h : ∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.snd), G h.some) 
   (λ (h : ¬∃ (m' : σ →₀ ℕ), ⇑(incl_monomial ι) m' = p.snd), 0))-/
+
+--(i : Π (a : α), a ∈ s → γ) (hi : ∀ (a : α) (ha : a ∈ s), i a ha ∈ t)
+
+def sum_terms (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
+  (τ →₀ ℕ) × (τ →₀ ℕ) → R :=
+  λ p : (τ →₀ ℕ) × (τ →₀ ℕ), 
+    dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst) 
+    (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), F h.some) 
+    (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.fst), 0) * 
+    dite (∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd) 
+    (λ (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), G h.some) 
+    (λ (h : ¬∃ (m' : σ →₀ ℕ), incl_monomial ι m' = p.snd), 0)
+
+def bij_map (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n) : 
+  Π (a : (σ →₀ ℕ) × (σ →₀ ℕ)), a ∈ h.some.antidiagonal → (τ →₀ ℕ) × (τ →₀ ℕ) := 
+  begin
+  intros a ha,
+  split,
+  exact incl_monomial ι a.1,
+  exact incl_monomial ι a.2,
+  end
+-- should probably change this (idk if this is considered bad code)
+
+lemma bij_map_into (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n ) : 
+  ∀ (a : (σ →₀ ℕ) × (σ →₀ ℕ)) (ha : a ∈ h.some.antidiagonal), bij_map ι n h a ha ∈ S ι n :=
+  begin
+    intros a ha,
+    dsimp [bij_map, S],
+    simp,         --bad simp
+    simp at ha,   --bad simp
+    rw ← incl_mon_add,
+    rw ha,
+    exact h.some_spec,
+  end
+
+lemma bij_map_eq (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n )
+  (F : mv_power_series σ R) (G : mv_power_series σ R) : 
+  ∀ (a : (σ →₀ ℕ) × (σ →₀ ℕ)) (ha : a ∈ h.some.antidiagonal), 
+  coeff R a.fst F * coeff R a.snd G = (sum_terms R ι F G) (bij_map ι n h a ha) :=
+  begin
+    intros a ha,
+    dsimp [sum_terms, bij_map],
+    have hh : (incl_monomial ι a.fst + incl_monomial ι a.snd = n), {
+      simp at ha, --fix this later
+      rw ← incl_mon_add,
+      rw ha,
+      exact h.some_spec,
+    },
+    split_ifs, {
+      have hf : (h_1.some = a.fst), {
+        apply (incl_monomial ι).injective,
+        exact h_1.some_spec,
+      }, 
+      have hs : (h_2.some = a.snd), {
+        apply (incl_monomial ι).injective,
+        exact h_2.some_spec,
+      },
+      rw [hf, hs],
+      refl,
+    }, {
+      exfalso,
+      apply h_2,
+      use a.snd,
+    }, {
+      exfalso,
+      apply h_1,
+      use a.fst,
+    }, {
+      exfalso,
+      apply h_1,
+      use a.fst,
+    }
+  end
+
+
+lemma bij_map_inj (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n ) :
+  ∀ (a b : (σ →₀ ℕ) × (σ →₀ ℕ)) (ha : a ∈ h.some.antidiagonal) (hb : b ∈ h.some.antidiagonal), 
+  bij_map ι n h a ha = bij_map ι n h b hb → a = b :=
+  begin
+    intros a b ha hb hh,
+    dsimp [bij_map] at hh,
+    simp at hh, -- FIX
+    cases hh,
+    exact prod.ext hh_left hh_right,
+  end
+
+lemma bij_map_surj (ι : σ ↪ τ) (n : τ →₀ ℕ) (h : ∃ (m' : σ →₀ ℕ), incl_monomial ι m' = n ) :
+  ∀ (b : (τ →₀ ℕ) × (τ →₀ ℕ)), b ∈ S ι n → (∃ (a : (σ →₀ ℕ) × (σ →₀ ℕ))
+  (ha : a ∈ h.some.antidiagonal), b = bij_map ι n h a ha) :=
+  begin
+    intros b hb,
+    dsimp [bij_map, S] at *,
+    simp at hb, --AGAIN
+    cases hb with hn hb,
+    cases hb with hbl hbr,
+    use (hbl.some, hbr.some),
+    split, {
+      simp, --And again
+      apply (incl_monomial ι).injective,
+      rw [incl_mon_add, hbl.some_spec, hbr.some_spec, h.some_spec],
+      exact hn,
+    }, {
+      apply prod.ext, {
+        simp,
+        rw hbl.some_spec,
+      }, {
+        simp,
+        rw hbr.some_spec,
+      }
+    }
+  end
+
 
 
 lemma incl_mul (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series σ R) :
@@ -214,11 +353,21 @@ lemma incl_mul (ι : σ ↪ τ) (F : mv_power_series σ R) (G : mv_power_series 
     split_ifs, {  
       dsimp [mv_power_series.has_mul],
       have hh : (S ι n ⊆ n.antidiagonal), {
-        rw finset.subset_iff,
-        intros x hh,
-        sorry,
+        intros p hh,
+        unfold S at hh,
+        simp at hh, --what was the thing to use?
+        cases hh,
+        simp,     --non-terminal simp
+        exact hh_left,
       },
-      rw ← finset.sum_subset_zero_on_sdiff hh (helper R ι n h F G),
+      rw ← finset.sum_subset_zero_on_sdiff hh (helper R ι n h F G) _, {
+        rw finset.sum_bij (bij_map ι n h) (bij_map_into ι n h) (bij_map_eq R ι n h F G) (bij_map_inj ι n h), {
+          exact bij_map_surj ι n h,
+        },
+      }, {
+        intros x hx,
+        refl,
+      },
     }, {
       symmetry,
       apply finset.sum_eq_zero,
@@ -252,6 +401,31 @@ open finset
 
 variables {σ τ ω R}
 def nth_pow (n : ℕ) (F : mv_power_series σ R) : mv_power_series σ R := (∏ i in range n, F)
+
+--as this all stands it is almost complete, however I need to "add one to functions n"
+/-
+def add_one (n : τ →₀ ℕ) : τ →₀ ℕ :=
+  λ (t : τ), ite (n t = 0) 0 (n t + 1)
+-/
+def comp_eval (G : σ → mv_power_series τ R) (n : τ →₀ ℕ) : σ → mv_polynomial τ R :=
+  λ (s : σ), mv_power_series.trunc_fun n (G s)
+
+
+def F_poly (F : mv_power_series σ R) (hF : finite σ ) (n : τ →₀ ℕ ) : mv_polynomial σ R :=
+  mv_power_series.trunc_fun (finsupp.equiv_fun_on_finite.inv_fun (λ s : σ, ∑ t in n.support, n t)) F
+
+
+
+def compose 
+  (F : mv_power_series σ R) -- F(X_1,X_2,...,X_n) 
+  (G : σ → mv_power_series τ R) -- G_1(X_1,...,X_m), ..., G_n(X_1,...,X_m)
+  (hF : finite σ )
+  (hG : ∀ i, congruent_mod 1 (G i) 0) :
+  mv_power_series τ R := 
+  λ (n : τ →₀ ℕ ), mv_polynomial.coeff n (mv_polynomial.eval₂ mv_polynomial.C (comp_eval G n) (F_poly F hF n))
+  --(n : (τ →₀ ℕ) => ) -- F(G_1(X_1,...,X_m),...,G_n(X_1,...,X_m))
+  --give auxillary m = 2* n (bit of a hack)
+
 
 /-
 
@@ -314,32 +488,30 @@ def compose
   (hG : ∀ i, congruent_mod 1 (G i) 0) :
   mv_power_series τ R := λ (n : τ →₀ ℕ ), --(n : (τ →₀ ℕ) => ) -- F(G_1(X_1,...,X_m),...,G_n(X_1,...,X_m))
 
-def compose_fst 
-  (F : mv_power_series (σ ⊕ τ) R) -- F(X_1,...,X_n;Y_1,...,Y_m)
-  (G : σ → mv_power_series ω R) -- G_1(Z_1,...,Z_k), ..., G_n(Z_1,...,Z_k)
-  (hG : ∀ i, congruent_mod 1 (G i) 0) :
-  mv_power_series (ω ⊕ τ) R := -- F(G_1(Z_1,...,Z_k),...,G_n(Z_1,...,Z_k);Y_1,...,Y_m)
-sorry 
-
-def compose_snd 
-  (F : mv_power_series (σ ⊕ τ) R) -- F(X_1,...,X_n;Y_1,...,Y_m)
-  (G : τ → mv_power_series ω R) -- G_1(Z_1,...,Z_k), ..., G_m(Z_1,...,Z_k)
-  (hG : ∀ i, congruent_mod 1 (G i) 0) :
-  mv_power_series (σ ⊕ ω) R := -- F(X_1,...,X_n;G_1(Z_1,...,Z_k),...,G_m(Z_1,...,Z_k))
 sorry 
 
 -/
+
+
+
 
 end mv_power_series
 
+#check function.embedding.inr
+
 /-
+
 structure mv_formal_group_law :=
 (F : σ → mv_power_series (σ ⊕ σ) R)
+(hF : finite σ)
 (F_mod_2 : ∀ i, mv_power_series.congruent_mod 2 (F i) 
   (mv_power_series.X (sum.inl i) + mv_power_series.X (sum.inr i)))
 (F_assoc : ∀ i, 
-  mv_power_series.compose_snd (F i) F sorry  -- should follow from F_mod_2
+  mv_power_series.compose (F i) (sum.elim (mv_power_series.incl R function.embedding.inl ∘ F) 
+  (mv_power_series.incl R function.embedding.inr ∘ mv_power_series.X)) _ _ -- should follow from F_mod_2
   = 
-  mv_power_series.change_var (equiv.sum_assoc _ _ _)
-  (mv_power_series.compose_fst (F i) F sorry))
--/
+  mv_power_series.compose (F_i) (sum.elim (mv_power_series.incl R 
+  (function.embedding.trans function.embedding.inl  function.embedding.inl) ∘ 
+  mv_power_series.X) (mv_power_series.incl R (sum.elim 
+  (function.embedding.trans function.embedding.inr  function.embedding.inl) function.embedding.inr)))) 
+  -/
